@@ -135,22 +135,30 @@ def writeCurrentChoice(choix):
             return False
 
 
+def getAbsoluteDirectoryDownload():
+    if os.path.isdir(home + '/Téléchargements'):
+        return home + '/Téléchargements/'
+    else:
+        return home + '/Downloads/'
+
+
 def main():
     # -----------------------
     # -- Le fichier
     choices = open(home + '/iMacros/Datasources/Choices.csv', 'r')
+
+    absoluteDirectoryDownload = getAbsoluteDirectoryDownload()
+
     for choix in choices:
 
-        print "Choix proposé " + choix
         if writeCurrentChoice(choix):
-            print "Choix effectif : " + choix
 
             # Arrete FireFox
             killFireFox()
 
             # Supprime le fichier contenant le calendrier
-            if os.path.isfile(home + '/Downloads/ADECal.ics'):
-                os.remove(home + '/Downloads/ADECal.ics')
+            if os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
+                os.remove(absoluteDirectoryDownload + 'ADECal.ics')
 
             # Si le display n'existe pas, en creer un qui est virtuel'
             if 'DISPLAY' not in os.environ:
@@ -172,7 +180,7 @@ def main():
                         vdisplay.stop()
                     return
                 # Si le fichier ics a ete cree, on arrete la boucle
-                if os.path.isfile(home + '/Downloads/ADECal.ics'):
+                if os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
                     break
                 # Fait une copie d'ecran
                 fileName = "screenshot" + str(c) + ".png"
@@ -196,7 +204,7 @@ def main():
             # Verifier si le fichier existe.
             # Si ce n'est pas le cas, envoyer un mail d'erreur de connexion
             # au serveur
-            if not os.path.isfile(home + '/Downloads/ADECal.ics'):
+            if not os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
                 sendMail("Error", "ADECal.ics not generated", fileList)
                 # Supprime les fichiers screenshot
                 os.system("rm screenshot*.png")
@@ -206,7 +214,7 @@ def main():
             os.system("rm screenshot*.png")
 
             # Load the icalendar file
-            g = open(home + '/Downloads/ADECal.ics', 'rb')
+            g = open(absoluteDirectoryDownload + 'ADECal.ics', 'rb')
             gcal = icalendar.Calendar.from_ical(g.read())
             g.close()
 
