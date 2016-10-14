@@ -15,6 +15,7 @@ import json
 from datetime import datetime
 import pytz
 import sys
+from enum import Enum
 
 
 Vevent = namedtuple('Vevent', ['dtstart', 'dtend', 'description', 'summary',
@@ -142,6 +143,30 @@ def getAbsoluteDirectoryDownload():
         return home + '/Downloads/'
 
 
+def waitingUntilDownloadedOrCrasched(p, vdisplay, absoluteDirectoryDownload):
+    c = 0
+    fileList = []
+    state = None
+    while True:
+        # ---------------------------------
+        # Si Firefox a ete ferme, le script s'arrete aussi
+        if p.status() == 'zombie':
+            if vdisplay is not None:
+                vdisplay.stop()
+            return {"state": State.firefoxIsDead, "fileList": []}
+        # Si le fichier ics a ete cree, on arrete la boucle
+        if os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
+            return {"state": State.calIsDownloaded, "fileList": []}
+        # Fait une copie d'ecran
+        fileName = "screenshot" + str(c) + ".png"
+        fileList = fileList + [fileName]
+        os.system("scrot " + fileName)
+        time.sleep(10)
+        c = c + 1
+        if c > 30:
+            return {"state": State.error, "fileList": fileList}
+
+
 def main():
     # -----------------------
     # -- Le fichier
@@ -170,26 +195,14 @@ def main():
             # Execute la macro pour recuperer le calendrier
             p = psutil.Popen(['firefox', 'imacros://run/?m=ADECalendar.iim'])
             time.sleep(9)
-            c = 0
-            fileList = []
-            while True:
-                # ---------------------------------
-                # Si Firefox a ete ferme, le script s'arrete aussi
-                if p.status() == 'zombie':
-                    if vdisplay is not None:
-                        vdisplay.stop()
-                    return
-                # Si le fichier ics a ete cree, on arrete la boucle
-                if os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
-                    break
-                # Fait une copie d'ecran
-                fileName = "screenshot" + str(c) + ".png"
-                fileList = fileList + [fileName]
-                os.system("scrot " + fileName)
-                time.sleep(10)
-                c = c + 1
-                if c > 30:
-                    break
+
+            rep = waitingUntilDownloadedOrCrasched(p,
+                                             vdisplay,
+                                             absoluteDirectoryDownload)
+
+            if rep["state"] == State.firefoxIsDead:
+                continue
+
             time.sleep(5)
 
             # Arrete FireFox
@@ -327,9 +340,14 @@ def main():
             # Envoie un message a Domesange pour indiquer
             # que le script s'est bien execute'
             sendMail('CMD', 'ADECalUpdtSucceed')
-        choices.close()
+    choices.close()
 
 if __name__ == '__main__':
+    class State(Enum):
+        firefoxIsDead = 1
+        calIsDownloaded = 2
+        error = 3
+
     home = os.getenv("HOME")
     infogm = open(home + '/iMacros/gm', 'r')
     user = infogm.readline()
