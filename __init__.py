@@ -146,7 +146,6 @@ def getAbsoluteDirectoryDownload():
 def waitingUntilDownloadedOrCrasched(p, vdisplay, absoluteDirectoryDownload):
     c = 0
     fileList = []
-    state = None
     while True:
         # ---------------------------------
         # Si Firefox a ete ferme, le script s'arrete aussi
@@ -167,6 +166,139 @@ def waitingUntilDownloadedOrCrasched(p, vdisplay, absoluteDirectoryDownload):
             return {"state": State.error, "fileList": fileList}
 
 
+def clearBeforeStart(absoluteDirectoryDownload):
+    # Arrete FireFox
+    killFireFox()
+
+    # Supprime le fichier contenant le calendrier
+    if os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
+        os.remove(absoluteDirectoryDownload + 'ADECal.ics')
+
+
+def getDisplay():
+    # Si le display n'existe pas, en creer un qui est virtuel'
+    if 'DISPLAY' not in os.environ:
+        vdisplay = Xvfb(width=970, height=490, colordepth=16)
+        vdisplay.start()
+        return vdisplay
+    else:
+        return None
+
+
+def getNewEvents(absoluteDirectoryDownload):
+    # Load the icalendar file
+    g = open(absoluteDirectoryDownload + 'ADECal.ics', 'rb')
+    gcal = icalendar.Calendar.from_ical(g.read())
+    g.close()
+    newEvents = []
+    for component in gcal.walk():
+        if component.name == "VEVENT":
+            descrStr = component.get('description')
+            pos = descrStr.find('(')
+            if pos is not -1:
+                descrStr = descrStr[0:pos]
+            if descrStr[0] == "\n":
+                descrStr = descrStr[1:]
+            if descrStr[len(descrStr) - 1] == "\n":
+                descrStr = descrStr[0:len(descrStr) - 1]
+            e = Vevent(dtstart=component.get('dtstart').dt,
+                       dtend=component.get('dtend').dt,
+                       description=descrStr,
+                       summary=component.get('summary'),
+                       location=component.get('location'),
+                       googlCalID='0'
+                      )
+            newEvents.append(e)
+    return newEvents
+
+
+def getWhatToDoWithEvents(newEvents):
+    # Ouvre le calendrier precedent
+    modifEvt = []
+    if os.path.isfile('prevADECal.txt'):
+        prevEvents = loadCal('prevADECal.txt')
+        # Trouve les cours a supprimer et ceux a rajouter
+        evtToDel = []
+        evtToAdd = []
+        newEID = 0
+        prevEID = 0
+        while newEID < len(newEvents) and prevEID < len(prevEvents):
+            if newEvents[newEID].dtstart < prevEvents[prevEID].dtstart:
+                # Evenement a ajouter
+                e = newEvents[newEID]
+                evtToAdd.append(e)
+                newEID = newEID + 1
+            elif newEvents[newEID].dtstart > prevEvents[prevEID].dtstart:
+                # Evenement a supprimer
+                e = prevEvents[prevEID]
+                evtToDel.append(e)
+                prevEID = prevEID + 1
+            else:
+                if newEvents[newEID].dtend != prevEvents[prevEID]\
+                   .dtend or\
+                   newEvents[newEID].summary != prevEvents[prevEID]\
+                   .summary or\
+                   newEvents[newEID].location != prevEvents[prevEID]\
+                   .location or\
+                   newEvents[newEID].description != prevEvents[prevEID]\
+                   .description:
+                    e = prevEvents[prevEID]
+                    evtToDel.append(e)
+                    e = newEvents[newEID]
+                    evtToAdd.append(e)
+                else:
+                    e = prevEvents[prevEID]
+                    modifEvt.append(e)
+                newEID = newEID + 1
+                prevEID = prevEID + 1
+        while newEID < len(newEvents):
+            e = newEvents[newEID]
+            evtToAdd.append(e)
+            newEID = newEID + 1
+        while prevEID < len(prevEvents):
+            e = prevEvents[prevEID]
+            evtToDel.append(e)
+            prevEID = prevEID + 1
+    else:
+        evtToAdd = newEvents
+        evtToDel = []
+    return modifEvt, evtToDel, evtToAdd
+
+
+def changeEvents(modifEvt, evtToDel, evtToAdd):
+    # Si il y a des cours a ajouter ou a supprimer
+    if len(evtToAdd) != 0 or len(evtToDel) != 0:
+        # Met a jour le calendrier Google
+        googleCalendar.update(evtToAdd, evtToDel, modifEvt)
+        modifEvt.sort(key=lambda event: event.dtstart)
+        # Enregistre la nouvelle version du calendrier
+        saveCal(modifEvt, 'prevADECal.txt')
+
+        # Envoie un message pour indiquer les modifications faites
+        tz = pytz.timezone('Europe/Paris')
+        strAdded = '\nCours supprimes:\n'
+        for i in range(len(evtToDel)):
+            dt1 = datetime.strftime(evtToDel[i].dtstart.astimezone(tz),
+                '%d/%m/%Y %H:%M')
+            dt2 = datetime.strftime(evtToDel[i].dtend.astimezone(tz),
+                                    '-%H:%M')
+            strAdded = strAdded + dt1 + dt2 + ": " + \
+                       evtToDel[i].summary + '\n'
+        strAdded = strAdded + 'Cours ajoutes:\n'
+        for i in range(len(evtToAdd)):
+            dt1 = datetime.strftime(evtToAdd[i].dtstart.astimezone(tz),
+                                    '%d/%m/%Y %H:%M')
+            dt2 = datetime.strftime(evtToAdd[i].dtend.astimezone(tz),
+                                    '-%H:%M')
+            strAdded = strAdded + dt1 + dt2 + ": " + \
+                       evtToAdd[i].summary + '\n'
+        sendMail('Update ADE: ' + str(len(evtToAdd)) + ' added and ' +
+                 str(len(evtToDel)) + ' deleted', strAdded)
+    # Envoie un message a Domesange pour indiquer
+    # que le script s'est bien execute'
+    sendMail('CMD', 'ADECalUpdtSucceed')
+
+
 def main():
     # -----------------------
     # -- Le fichier
@@ -178,20 +310,10 @@ def main():
 
         if writeCurrentChoice(choix):
 
-            # Arrete FireFox
-            killFireFox()
+            clearBeforeStart(absoluteDirectoryDownload)
 
-            # Supprime le fichier contenant le calendrier
-            if os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
-                os.remove(absoluteDirectoryDownload + 'ADECal.ics')
+            vdisplay = getDisplay()
 
-            # Si le display n'existe pas, en creer un qui est virtuel'
-            if 'DISPLAY' not in os.environ:
-            # if not os.environ.has_key('DISPLAY'):
-                vdisplay = Xvfb(width=970, height=490, colordepth=16)
-                vdisplay.start()
-            else:
-                vdisplay = None
             # Execute la macro pour recuperer le calendrier
             p = psutil.Popen(['firefox', 'imacros://run/?m=ADECalendar.iim'])
             time.sleep(9)
@@ -221,125 +343,20 @@ def main():
                 sendMail("Error", "ADECal.ics not generated", rep["fileList"])
                 # Supprime les fichiers screenshot
                 os.system("rm screenshot*.png")
-                return
+                continue
 
             # Supprime les fichiers screenshot
             os.system("rm screenshot*.png")
 
-            # Load the icalendar file
-            g = open(absoluteDirectoryDownload + 'ADECal.ics', 'rb')
-            gcal = icalendar.Calendar.from_ical(g.read())
-            g.close()
-
-            newEvents = []
-            for component in gcal.walk():
-                if component.name == "VEVENT":
-                    descrStr = component.get('description')
-                    pos = descrStr.find('(')
-                    if pos is not -1:
-                        descrStr = descrStr[0:pos]
-                    if descrStr[0] == "\n":
-                        descrStr = descrStr[1:]
-                    if descrStr[len(descrStr) - 1] == "\n":
-                        descrStr = descrStr[0:len(descrStr) - 1]
-                    e = Vevent(dtstart=component.get('dtstart').dt,
-                               dtend=component.get('dtend').dt,
-                               description=descrStr,
-                               summary=component.get('summary'),
-                               location=component.get('location'),
-                               googlCalID='0'
-                              )
-                    newEvents.append(e)
+            newEvents = getNewEvents(absoluteDirectoryDownload)
 
             # Classer les evts par ordre croissant de dates
             newEvents.sort(key=lambda event: event.dtstart)
 
-            """
-            newEvents = loadCal('newADECal.txt')
-            prevEvents = loadCal('prevADECal.txt')
-            """
+            modifEvt, evtToDel, evtToAdd = getWhatToDoWithEvents(newEvents)
 
-            # Ouvre le calendrier precedent
-            modifEvt = []
-            if os.path.isfile('prevADECal.txt'):
-                prevEvents = loadCal('prevADECal.txt')
-                # Trouve les cours a supprimer et ceux a rajouter
-                evtToDel = []
-                evtToAdd = []
-                newEID = 0
-                prevEID = 0
-                while newEID < len(newEvents) and prevEID < len(prevEvents):
-                    if newEvents[newEID].dtstart < prevEvents[prevEID].dtstart:
-                        # Evenement a ajouter
-                        e = newEvents[newEID]
-                        evtToAdd.append(e)
-                        newEID = newEID + 1
-                    elif newEvents[newEID].dtstart > prevEvents[prevEID].dtstart:
-                        # Evenement a supprimer
-                        e = prevEvents[prevEID]
-                        evtToDel.append(e)
-                        prevEID = prevEID + 1
-                    else:
-                        if newEvents[newEID].dtend != prevEvents[prevEID]\
-                           .dtend or\
-                           newEvents[newEID].summary != prevEvents[prevEID]\
-                           .summary or\
-                           newEvents[newEID].location != prevEvents[prevEID]\
-                           .location or\
-                           newEvents[newEID].description != prevEvents[prevEID]\
-                           .description:
-                            e = prevEvents[prevEID]
-                            evtToDel.append(e)
-                            e = newEvents[newEID]
-                            evtToAdd.append(e)
-                        else:
-                            e = prevEvents[prevEID]
-                            modifEvt.append(e)
-                        newEID = newEID + 1
-                        prevEID = prevEID + 1
-                while newEID < len(newEvents):
-                    e = newEvents[newEID]
-                    evtToAdd.append(e)
-                    newEID = newEID + 1
-                while prevEID < len(prevEvents):
-                    e = prevEvents[prevEID]
-                    evtToDel.append(e)
-                    prevEID = prevEID + 1
-            else:
-                evtToAdd = newEvents
-                evtToDel = []
+            changeEvents(modifEvt, evtToDel, evtToAdd)
 
-            # Si il y a des cours a ajouter ou a supprimer
-            if len(evtToAdd) != 0 or len(evtToDel) != 0:
-                # Met a jour le calendrier Google
-                googleCalendar.update(evtToAdd, evtToDel, modifEvt)
-                modifEvt.sort(key=lambda event: event.dtstart)
-                # Enregistre la nouvelle version du calendrier
-                saveCal(modifEvt, 'prevADECal.txt')
-
-                # Envoie un message pour indiquer les modifications faites
-                tz = pytz.timezone('Europe/Paris')
-                strAdded = '\nCours supprimes:\n'
-                for i in range(len(evtToDel)):
-                    dt1 = datetime.strftime(evtToDel[i].dtstart.astimezone(tz),
-                        '%d/%m/%Y %H:%M')
-                    dt2 = datetime.strftime(evtToDel[i].dtend.astimezone(tz),
-                                            '-%H:%M')
-                    strAdded = strAdded + dt1 + dt2 + ": " + \
-                               evtToDel[i].summary + '\n'
-                strAdded = strAdded + 'Cours ajoutes:\n'
-                for i in range(len(evtToAdd)):
-                    dt1 = datetime.strftime(evtToAdd[i].dtstart.astimezone(tz),
-                                            '%d/%m/%Y %H:%M')
-                    dt2 = datetime.strftime(evtToAdd[i].dtend.astimezone(tz),
-                                            '-%H:%M')
-                    strAdded = strAdded + dt1 + dt2 + ": " + \
-                               evtToAdd[i].summary + '\n'
-                sendMail('Update ADE: ' + str(len(evtToAdd)) + ' added and ' +
-                         str(len(evtToDel)) + ' deleted', strAdded)
-            # Envoie un message a Domesange pour indiquer
-            # que le script s'est bien execute'
-            sendMail('CMD', 'ADECalUpdtSucceed')
     choices.close()
 
 if __name__ == '__main__':
