@@ -218,7 +218,7 @@ def main():
             # Si ce n'est pas le cas, envoyer un mail d'erreur de connexion
             # au serveur
             if not os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
-                sendMail("Error", "ADECal.ics not generated", fileList)
+                sendMail("Error", "ADECal.ics not generated", rep["fileList"])
                 # Supprime les fichiers screenshot
                 os.system("rm screenshot*.png")
                 return
