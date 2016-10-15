@@ -212,11 +212,11 @@ def getNewEvents(absoluteDirectoryDownload):
     return newEvents
 
 
-def getWhatToDoWithEvents(newEvents):
+def getWhatToDoWithEvents(newEvents, ufr):
     # Ouvre le calendrier precedent
     modifEvt = []
-    if os.path.isfile('prevADECal.txt'):
-        prevEvents = loadCal('prevADECal.txt')
+    if os.path.isfile('prevADECal' + ufr + '.txt'):
+        prevEvents = loadCal('prevADECal' + ufr + '.txt')
         # Trouve les cours a supprimer et ceux a rajouter
         evtToDel = []
         evtToAdd = []
@@ -272,7 +272,7 @@ def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
         googleCalendar.update(evtToAdd, evtToDel, modifEvt)
         modifEvt.sort(key=lambda event: event.dtstart)
         # Enregistre la nouvelle version du calendrier
-        saveCal(modifEvt, 'prevADECal.txt')
+        saveCal(modifEvt, 'prevADECal' + ufr + '.txt')
 
         # Envoie un message pour indiquer les modifications faites
         tz = pytz.timezone('Europe/Paris')
@@ -302,11 +302,14 @@ def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
 def main():
     # -----------------------
     # -- Le fichier
-    ufrChoices = open(home + '/iMacros/Datasources/ufrChoices.csv', 'r')
+    ufrChoices = open(home + '/iMacros/Datasources/UfrChoices.csv', 'r')
 
     absoluteDirectoryDownload = getAbsoluteDirectoryDownload()
 
     for ufr in ufrChoices:
+        ufr = ufr.strip()
+        print "-" + ufr + "-"
+        continue
 
         if writeCurrentUfr(ufr):
 
@@ -353,9 +356,9 @@ def main():
             # Classer les evts par ordre croissant de dates
             newEvents.sort(key=lambda event: event.dtstart)
 
-            modifEvt, evtToDel, evtToAdd = getWhatToDoWithEvents(newEvents)
+            modifEvt, evtToDel, evtToAdd = getWhatToDoWithEvents(newEvents, ufr)
 
-            changeEvents(modifEvt, evtToDel, evtToAdd)
+            changeEvents(modifEvt, evtToDel, evtToAdd, ufr)
 
     ufrChoices.close()
 
