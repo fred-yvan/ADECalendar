@@ -137,10 +137,10 @@ def writeCurrentChoice(choix):
 
 
 def getAbsoluteDirectoryDownload():
-    if os.path.isdir(home + '/Téléchargements'):
-        return home + '/Téléchargements/'
-    else:
+    if os.path.isdir(home + '/Downloads'):
         return home + '/Downloads/'
+    else:
+        return home + '/Téléchargements/'
 
 
 def waitingUntilDownloadedOrCrasched(p, vdisplay, absoluteDirectoryDownload):
