@@ -113,24 +113,24 @@ def loadCal(fileName):
     return cal
 
 
-# Ecrit le choix de l'UFR dans le fichier CurrentChoice.csv et retourne
+# Ecrit le choix de l'UFR dans le fichier CurrentUfr.csv et retourne
 # vrai si l'écriture s'est bien passé et faux dans le cas contraire ou
 # si choix est vide ou est un commentaire, c'est-à-dire une chaîne qui
 # commence par #
 # Le fichier CurrrentChoice permet à iMacros d'ouvrir le calendrier de
 # cette UFR.
-def writeCurrentChoice(choix):
-    choix = choix.strip()
-    if choix == '' or choix.startswith('#'):
+def writeCurrentUfr(ufr):
+    ufr = ufr.strip()
+    if ufr == '' or ufr.startswith('#'):
         return False
     else:
         try:
-            if os.path.isfile(home + '/iMacros/Datasources/CurrentChoice.csv'):
-                os.remove(home + '/iMacros/Datasources/CurrentChoice.csv')
+            if os.path.isfile(home + '/iMacros/Datasources/CurrentUfr.csv'):
+                os.remove(home + '/iMacros/Datasources/CurrentUfr.csv')
 
-            fchoix = open(home + '/iMacros/Datasources/CurrentChoice.csv', 'w')
-            fchoix.write(choix)
-            fchoix.close()
+            fufr = open(home + '/iMacros/Datasources/CurrentUfr.csv', 'w')
+            fufr.write(ufr)
+            fufr.close()
             return True
         except:
             return False
@@ -265,7 +265,7 @@ def getWhatToDoWithEvents(newEvents):
     return modifEvt, evtToDel, evtToAdd
 
 
-def changeEvents(modifEvt, evtToDel, evtToAdd):
+def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
     # Si il y a des cours a ajouter ou a supprimer
     if len(evtToAdd) != 0 or len(evtToDel) != 0:
         # Met a jour le calendrier Google
@@ -302,13 +302,13 @@ def changeEvents(modifEvt, evtToDel, evtToAdd):
 def main():
     # -----------------------
     # -- Le fichier
-    choices = open(home + '/iMacros/Datasources/Choices.csv', 'r')
+    ufrChoices = open(home + '/iMacros/Datasources/ufrChoices.csv', 'r')
 
     absoluteDirectoryDownload = getAbsoluteDirectoryDownload()
 
-    for choix in choices:
+    for ufr in ufrChoices:
 
-        if writeCurrentChoice(choix):
+        if writeCurrentUfr(ufr):
 
             clearBeforeStart(absoluteDirectoryDownload)
 
@@ -357,7 +357,7 @@ def main():
 
             changeEvents(modifEvt, evtToDel, evtToAdd)
 
-    choices.close()
+    ufrChoices.close()
 
 if __name__ == '__main__':
     class State(Enum):
