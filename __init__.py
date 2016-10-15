@@ -113,22 +113,22 @@ def loadCal(fileName):
     return cal
 
 
-# Ecrit le choix de l'UFR dans le fichier CurrentUfr.csv et retourne
+# Ecrit le choix de l'UFR dans le fichier CurrentChoice.csv et retourne
 # vrai si l'écriture s'est bien passé et faux dans le cas contraire ou
 # si choix est vide ou est un commentaire, c'est-à-dire une chaîne qui
 # commence par #
-# Le fichier CurrrentChoice permet à iMacros d'ouvrir le calendrier de
-# cette UFR.
+# Le fichier CurrrentChoice permet à iMacros d'ouvrir l'emploi du temps
+# de l'enseignant donné et de cette UFR .
 def writeCurrentUfr(ufr):
     if ufr == '' or ufr.startswith('#'):
         return False
     else:
         try:
-            if os.path.isfile(home + '/iMacros/Datasources/CurrentUfr.csv'):
-                os.remove(home + '/iMacros/Datasources/CurrentUfr.csv')
+            if os.path.isfile(home + '/iMacros/Datasources/CurrentChoice.csv'):
+                os.remove(home + '/iMacros/Datasources/CurrentChoice.csv')
 
-            fufr = open(home + '/iMacros/Datasources/CurrentUfr.csv', 'w')
-            fufr.write(ufr)
+            fufr = open(home + '/iMacros/Datasources/CurrentChoice.csv', 'w')
+            fufr.write(ufr + ', ' + enseignantDansAde + '\n')
             fufr.close()
             return True
         except:
@@ -369,5 +369,10 @@ if __name__ == '__main__':
     home = os.getenv("HOME")
     infogm = open(home + '/iMacros/gm', 'r')
     user = infogm.readline()
+    user = user.strip()
     password = infogm.readline()
+    password = password.strip()
+    enseignantDansAde = infogm.readline()
+    enseignantDansAde = enseignantDansAde.strip()
+    infogm.close()
     main()
