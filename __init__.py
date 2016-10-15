@@ -275,7 +275,8 @@ def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
 
         # Envoie un message pour indiquer les modifications faites
         tz = pytz.timezone('Europe/Paris')
-        strAdded = '\nCours supprimes:\n'
+        strAdded = "Modification pour " + enseignantDansAde + " à " + ufr
+        strAdded = strAdded + '\nCours supprimes:\n'
         for i in range(len(evtToDel)):
             dt1 = datetime.strftime(evtToDel[i].dtstart.astimezone(tz),
                 '%d/%m/%Y %H:%M')
@@ -295,7 +296,7 @@ def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
                  str(len(evtToDel)) + ' deleted', strAdded)
     # Envoie un message a Domesange pour indiquer
     # que le script s'est bien execute'
-    sendMail('CMD', 'ADECalUpdtSucceed')
+    sendMail('CMD', 'ADECalUpdtSucceed for ' + enseignantDansAde + ' at ' + ufr)
 
 
 def main():
@@ -341,7 +342,9 @@ def main():
             # Si ce n'est pas le cas, envoyer un mail d'erreur de connexion
             # au serveur
             if not os.path.isfile(absoluteDirectoryDownload + 'ADECal.ics'):
-                sendMail("Error", "ADECal.ics not generated", rep["fileList"])
+                sendMail("Error", "ADECal.ics not generated for " +
+                                   enseignantDansAde + " at " + ufr,
+                                   rep["fileList"])
                 # Supprime les fichiers screenshot
                 os.system("rm screenshot*.png")
                 continue
