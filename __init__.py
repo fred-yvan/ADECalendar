@@ -120,7 +120,6 @@ def loadCal(fileName):
 # Le fichier CurrrentChoice permet à iMacros d'ouvrir le calendrier de
 # cette UFR.
 def writeCurrentUfr(ufr):
-    ufr = ufr.strip()
     if ufr == '' or ufr.startswith('#'):
         return False
     else:
@@ -307,9 +306,8 @@ def main():
     absoluteDirectoryDownload = getAbsoluteDirectoryDownload()
 
     for ufr in ufrChoices:
+        # Pour enlever les blancs et surtout les sauts de ligne
         ufr = ufr.strip()
-        print "-" + ufr + "-"
-        continue
 
         if writeCurrentUfr(ufr):
 
