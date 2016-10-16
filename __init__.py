@@ -214,8 +214,8 @@ def getNewEvents(absoluteDirectoryDownload):
 def getWhatToDoWithEvents(newEvents, ufr):
     # Ouvre le calendrier precedent
     modifEvt = []
-    if os.path.isfile('prevADECal' + ufr + '.txt'):
-        prevEvents = loadCal('prevADECal' + ufr + '.txt')
+    if os.path.isfile('prevADECal' + enseignantDansAde + ufr + '.txt'):
+        prevEvents = loadCal('prevADECal' + enseignantDansAde + ufr + '.txt')
         # Trouve les cours a supprimer et ceux a rajouter
         evtToDel = []
         evtToAdd = []
@@ -268,10 +268,10 @@ def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
     # Si il y a des cours a ajouter ou a supprimer
     if len(evtToAdd) != 0 or len(evtToDel) != 0:
         # Met a jour le calendrier Google
-        googleCalendar.update(evtToAdd, evtToDel, modifEvt)
+        googleCalendar.update(evtToAdd, evtToDel, modifEvt, enseignantDansAde)
         modifEvt.sort(key=lambda event: event.dtstart)
         # Enregistre la nouvelle version du calendrier
-        saveCal(modifEvt, 'prevADECal' + ufr + '.txt')
+        saveCal(modifEvt, 'prevADECal' + enseignantDansAde + ufr + '.txt')
 
         # Envoie un message pour indiquer les modifications faites
         tz = pytz.timezone('Europe/Paris')
@@ -300,6 +300,9 @@ def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
 
 
 def main():
+    import sys
+    reload(sys)
+    sys.setdefaultencoding('utf8')
     # -----------------------
     # -- Le fichier
     ufrChoices = open(home + '/iMacros/Datasources/UfrChoices.csv', 'r')
@@ -377,5 +380,15 @@ if __name__ == '__main__':
     password = password.strip()
     enseignantDansAde = infogm.readline()
     enseignantDansAde = enseignantDansAde.strip()
-    infogm.close()
     main()
+    user = infogm.readline()
+    user = user.strip()
+    if (user != ''):
+        password = infogm.readline()
+        password = password.strip()
+        enseignantDansAde = infogm.readline()
+        enseignantDansAde = enseignantDansAde.strip()
+        main()
+    infogm.close()
+
+

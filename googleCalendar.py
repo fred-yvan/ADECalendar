@@ -22,7 +22,7 @@ CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'ADEToGoogleCalendar'
 
 
-def get_credentials():
+def get_credentials(who):
     """Gets valid user credentials from storage.
 
     If nothing has been stored, or if the stored credentials are invalid,
@@ -31,7 +31,7 @@ def get_credentials():
     Returns:
         Credentials, the obtained credential.
     """
-    credential_path = "calendar-python-quickstart.json"
+    credential_path = "calendar-python-quickstart" + who + ".json"
     store = oauth2client.file.Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
@@ -56,9 +56,9 @@ def deleteEvents(service, gcal):
         time.sleep(0.01)
 
 
-def update(evtToAdd, evtToDel, modifEvt):
+def update(evtToAdd, evtToDel, modifEvt, who):
     # get the credentials
-    credentials = get_credentials()
+    credentials = get_credentials(who)
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
 
