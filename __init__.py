@@ -89,6 +89,13 @@ def saveCal(cal, fileName):
     f.close()
 
 
+def cmpEvt(ev1, ev2):
+    if ev1.dtstart == ev2.dtstart:
+        return cmp(ev1.location, ev2.location)
+    else:
+        return cmp(ev1.dtstart, ev2.dtstart)
+
+
 def loadCal(fileName):
     cal = []
     with open(fileName) as fp:
@@ -269,7 +276,7 @@ def changeEvents(modifEvt, evtToDel, evtToAdd, ufr):
     if len(evtToAdd) != 0 or len(evtToDel) != 0:
         # Met a jour le calendrier Google
         googleCalendar.update(evtToAdd, evtToDel, modifEvt, enseignantDansAde)
-        modifEvt.sort(key=lambda event: event.dtstart)
+        modifEvt.sort(cmp=lambda a, b: cmpEvt(a, b))
         # Enregistre la nouvelle version du calendrier
         saveCal(modifEvt, 'prevADECal' + enseignantDansAde + ufr + '.txt')
 
@@ -358,7 +365,7 @@ def main():
             newEvents = getNewEvents(absoluteDirectoryDownload)
 
             # Classer les evts par ordre croissant de dates
-            newEvents.sort(key=lambda event: event.dtstart)
+            newEvents.sort(cmp=lambda a, b: cmpEvt(a, b))
 
             modifEvt, evtToDel, evtToAdd = getWhatToDoWithEvents(newEvents, ufr)
 
